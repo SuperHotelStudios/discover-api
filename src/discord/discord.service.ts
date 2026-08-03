@@ -21,41 +21,73 @@ export class DiscordService {
     }
 
     const inviteCode = match[1];
-  let data: any;
 
-  try {
-    const response = await firstValueFrom(
-      this.httpService.get(
-        `https://discord.com/api/v10/invites/${inviteCode}?with_counts=true`,
-      ),
-    );
+    let data: any;
 
-    data = response.data;
-  } catch (error) {
-    if (
-      error instanceof AxiosError &&
-      error.response?.status === 404
-    ) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `https://discord.com/api/v10/invites/${inviteCode}?with_counts=true`,
+        ),
+      );
+
+      data = response.data;
+    } catch (error) {
+      if (
+        error instanceof AxiosError &&
+        error.response?.status === 404
+      ) {
+        throw new BadRequestException(
+          'Invalid or expired Discord invite.',
+        );
+      }
+
       throw new BadRequestException(
-        'Invalid or expired Discord invite.',
+        'Unable to verify Discord invite at the moment. Please try again later.',
       );
     }
 
-    throw new BadRequestException(
-      'Unable to verify Discord invite at the moment. Please try again later.',
-    );
-  }
+    // ============================
+    // Must be a Discord Server
+    // ============================
 
-  const iconUrl = data.guild.icon
-    ? `https://cdn.discordapp.com/icons/${data.guild.id}/${data.guild.icon}.${data.guild.icon.startsWith('a_') ? 'gif' : 'png'}`
-    : '';
+    if (!data.guild) {
+      throw new BadRequestException(
+        'Only Discord server invites are allowed.',
+      );
+    }
 
-  return {
-    discordGuildId: data.guild.id,
-    name: data.guild.name,
-    logo: iconUrl,
-    memberCount: data.approximate_member_count,
-    inviteLink,
-  };
+    // ============================
+    // Invite must never expire
+    // ============================
+
+    if (data.expires_at !== null) {
+      throw new BadRequestException(
+        'Invite link must never expire.',
+      );
+    }
+
+    // ============================
+    // Guild Icon
+    // ============================
+
+    const iconUrl = data.guild.icon
+      ? `https://cdn.discordapp.com/icons/${data.guild.id}/${data.guild.icon}.${data.guild.icon.startsWith('a_') ? 'gif' : 'png'}`
+      : '';
+
+    // ============================
+    // Success
+    // ============================
+
+    return {
+      discordGuildId: data.guild.id,
+      name: data.guild.name,
+      logo: iconUrl,
+      memberCount: data.approximate_member_count,
+      data,
+
+      // Store normalized invite
+      inviteLink: `https://discord.gg/${inviteCode}`,
+    };
   }
 }

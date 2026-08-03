@@ -87,7 +87,7 @@ export class UsersService {
     const communities =
       await this.communityRepository.count({
         where: {
-          owner: {
+          createdBy: {
             id: user.id,
           },
         },
@@ -105,7 +105,7 @@ export class UsersService {
     const ownedCommunities =
       await this.communityRepository.find({
         where: {
-          owner: {
+          createdBy: {
             id: user.id,
           },
         },

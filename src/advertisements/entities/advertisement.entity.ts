@@ -22,9 +22,10 @@ export class Advertisement {
   id!: number;
 
   // Which community was advertised
-  @ManyToOne(() => Community)
+  @ManyToOne(() => Community, {
+    onDelete: 'CASCADE',
+  })
   community!: Community;
-
   // Who advertised it
   @ManyToOne(() => User)
   advertiser!: User;

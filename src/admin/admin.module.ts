@@ -1,23 +1,35 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { User } from '../users/entities/user.entity';
 import { Community } from '../communities/entities/community.entity';
 import { Advertisement } from '../advertisements/entities/advertisement.entity';
 
+import { Category } from '../categories/entities/category.entity';
+import { Review } from '../reviews/entities/review.entity';
+import { Favorite } from '../favorites/entities/favorite.entity';
+import { CommunityView } from '../views/entities/community-view.entity';
+import { InviteClick } from '../clicks/entities/invite-click.entity';
+import { Report } from '../reports/entities/report.entity';
+
 @Module({
-  controllers: [AdminController],
-  providers: [AdminService],
   imports: [
-  TypeOrmModule.forFeature([
+    TypeOrmModule.forFeature([
     User,
     Community,
     Advertisement,
+    Category,
+    Review,
+    Favorite,
+    CommunityView,
+    InviteClick,
+    Report,
   ]),
-],
+  ],
+  controllers: [AdminController],
+  providers: [AdminService],
 })
-
 export class AdminModule {}

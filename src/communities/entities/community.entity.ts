@@ -42,7 +42,7 @@ export class Community {
   featured!: boolean;
 
   @ManyToOne(() => User)
-  owner!: User;
+  createdBy!: User;
 
   @CreateDateColumn()
   createdAt!: Date;
@@ -61,4 +61,15 @@ export class Community {
 
   @Column({ unique: true, nullable: true })
   discordGuildId!: string;
+
+  @Column({
+  default: false,
+  })
+  hidden!: boolean;
+
+  @Column({
+    type: 'text',
+    nullable: true,
+  })
+  hiddenReason?: string;
 }

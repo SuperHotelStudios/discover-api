@@ -40,10 +40,13 @@ export class CommunitiesService {
     private readonly reviewRepository: Repository<Review>,
   ) {}
 
-  create(createCommunityDto: CreateCommunityDto, owner: any) {
+  create(
+    createCommunityDto: CreateCommunityDto,
+    createdBy: any,
+  ) {
     const community = this.communityRepository.create({
       ...createCommunityDto,
-      owner,
+      createdBy,
     });
 
     return this.communityRepository.save(community);
@@ -51,14 +54,20 @@ export class CommunitiesService {
 
   findAll() {
     return this.communityRepository.find({
-      relations: ['owner'],
+      where: {
+        hidden: false,
+      },
+      relations: ['createdBy'],
     });
   }
 
   findOne(id: number) {
     return this.communityRepository.findOne({
-      where: { id },
-      relations: ['owner'],
+      where: {
+        id,
+        hidden: false,
+      },
+      relations: ['createdBy'],
     });
   }
 
@@ -70,7 +79,7 @@ export class CommunitiesService {
     const community =
       await this.communityRepository.findOne({
         where: { id },
-        relations: ['owner'],
+        relations: ['createdBy'],
       });
 
     if (!community) {
@@ -79,7 +88,7 @@ export class CommunitiesService {
       );
     }
 
-    if (community.owner.id !== user.id) {
+    if (community.createdBy.id !== user.id) {
       throw new ForbiddenException(
         'You do not own this community.',
       );
@@ -104,7 +113,7 @@ export class CommunitiesService {
     const community =
       await this.communityRepository.findOne({
         where: { id },
-        relations: ['owner'],
+        relations: ['createdBy'],
       });
 
     if (!community) {
@@ -114,7 +123,7 @@ export class CommunitiesService {
 
     }
 
-    if (community.owner.id !== user.id) {
+    if (community.createdBy.id !== user.id) {
       throw new ForbiddenException(
         'You do not own this community.',
       );
@@ -150,11 +159,11 @@ export class CommunitiesService {
   async findMyCommunities(user: any) {
     return this.communityRepository.find({
       where: {
-        owner: {
+        createdBy: {
           id: user.id,
         },
       },
-      relations: ['owner'],
+      relations: ['createdBy'],
       order: {
         totalPoints: 'DESC',
       },
@@ -163,7 +172,10 @@ export class CommunitiesService {
 
   async getLeaderboard() {
     const communities = await this.communityRepository.find({
-      relations: ['owner'],
+      where: {
+        hidden: false,
+      },
+      relations: ['createdBy'],
       order: {
         totalPoints: 'DESC',
       },

@@ -15,7 +15,9 @@ import { FavoritesModule } from './favorites/favorites.module';
 import { CategoriesModule } from './categories/categories.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AdminModule } from './admin/admin.module';
-
+import { CategoryRequestsModule } from './category-requests/category-requests.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -57,6 +59,12 @@ import { AdminModule } from './admin/admin.module';
     DashboardModule,
 
     AdminModule,
+
+    CategoryRequestsModule,
+
+    NotificationsModule,
+
+    ReportsModule,
 
   ],
   controllers: [AppController],

@@ -32,7 +32,7 @@ export class DashboardService {
     const communities =
       await this.communityRepository.find({
         where: {
-          owner: {
+          createdBy: {
             id: user.id,
           },
         },

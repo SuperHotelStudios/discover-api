@@ -13,7 +13,9 @@ export class InviteClick {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @ManyToOne(() => Community)
+  @ManyToOne(() => Community, {
+    onDelete: 'CASCADE',
+  })
   community!: Community;
 
   @ManyToOne(() => User, {

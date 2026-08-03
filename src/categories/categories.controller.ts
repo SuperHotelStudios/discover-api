@@ -9,6 +9,7 @@ import {
 
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { ParseArrayPipe } from '@nestjs/common';
 
 @Controller('categories')
 export class CategoriesController {
@@ -28,6 +29,20 @@ export class CategoriesController {
   ) {
     return this.categoriesService.create(
       createCategoryDto,
+    );
+  }
+
+  @Post('bulk')
+  createBulk(
+    @Body(
+      new ParseArrayPipe({
+        items: CreateCategoryDto,
+      }),
+    )
+    createCategoryDtos: CreateCategoryDto[],
+  ) {
+    return this.categoriesService.createBulk(
+      createCategoryDtos,
     );
   }
 

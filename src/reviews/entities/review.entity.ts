@@ -15,9 +15,10 @@ export class Review {
   id!: number;
 
   // Community being reviewed
-  @ManyToOne(() => Community)
+  @ManyToOne(() => Community, {
+    onDelete: 'CASCADE',
+  })
   community!: Community;
-
   // User who reviewed
   @ManyToOne(() => User)
   reviewer!: User;

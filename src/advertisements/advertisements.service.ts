@@ -131,7 +131,7 @@ export class AdvertisementsService {
           category:
             createAdvertisementDto.category,
 
-          owner: dbUser,
+          createdBy: dbUser,
         });
     }
 

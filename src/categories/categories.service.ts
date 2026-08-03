@@ -14,7 +14,7 @@ export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
-  ) {}
+  ) { }
 
   findAll() {
     return this.categoryRepository.find({
@@ -48,6 +48,43 @@ export class CategoriesService {
     return this.categoryRepository.save(
       category,
     );
+  }
+
+  async createBulk(
+    createCategoryDtos: CreateCategoryDto[],
+  ) {
+
+    const created: Category[] = [];
+
+    for (const dto of createCategoryDtos) {
+      const exists =
+        await this.categoryRepository.findOne({
+          where: {
+            name: dto.name.trim(),
+          },
+        });
+
+      if (exists) {
+        continue;
+      }
+
+      const category =
+        this.categoryRepository.create({
+          name: dto.name.trim(),
+          icon: dto.icon.trim(),
+        });
+
+      created.push(
+        await this.categoryRepository.save(
+          category,
+        ),
+      );
+    }
+
+    return {
+      message: `${created.length} categories created successfully.`,
+      categories: created,
+    };
   }
 
   async remove(id: number) {
