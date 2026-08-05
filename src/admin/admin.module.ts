@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { AdminGuard } from './guards/admin.guard';
+import { OwnerGuard } from './guards/owner.guard';
 
 import { User } from '../users/entities/user.entity';
 import { Community } from '../communities/entities/community.entity';
@@ -30,6 +32,6 @@ import { Report } from '../reports/entities/report.entity';
   ]),
   ],
   controllers: [AdminController],
-  providers: [AdminService],
+  providers: [AdminService, AdminGuard, OwnerGuard],
 })
 export class AdminModule {}

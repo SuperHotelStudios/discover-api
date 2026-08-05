@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/jwt-auth/jwt-auth.guard';
+import { AdminGuard } from '../admin/guards/admin.guard';
 
 import { CategoryRequestsService } from './category-requests.service';
 
@@ -42,7 +43,7 @@ export class CategoryRequestsController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(':id/approve')
   approve(
     @Param('id', ParseIntPipe)
@@ -57,6 +58,7 @@ export class CategoryRequestsController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(':id/reject')
   reject(
   @Param('id', ParseIntPipe)
@@ -75,7 +77,7 @@ export class CategoryRequestsController {
   );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Get('pending')
   pending() {
     return this.categoryRequestsService.findPending();

@@ -1,8 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { Community } from '../communities/entities/community.entity';
 import { Advertisement } from '../advertisements/entities/advertisement.entity';
 import { Category } from '../categories/entities/category.entity';
@@ -106,6 +110,104 @@ export class AdminService {
       createdAt: 'DESC',
     },
   });
+  }
+
+  async getUsers(search = '') {
+    const query = this.userRepository
+      .createQueryBuilder('user')
+      .orderBy('user.createdAt', 'DESC');
+
+    if (search.trim()) {
+      query.where(
+        new Brackets((subQuery) => {
+          subQuery
+            .where('user.username LIKE :search', {
+              search: `%${search.trim()}%`,
+            })
+            .orWhere('user.displayName LIKE :search', {
+              search: `%${search.trim()}%`,
+            })
+            .orWhere('user.discordId LIKE :search', {
+              search: `%${search.trim()}%`,
+            });
+        }),
+      );
+    }
+
+    const users = await query.getMany();
+
+    return users.map((user) => ({
+      id: user.id,
+      discordId: user.discordId,
+      username: user.username,
+      displayName: user.displayName,
+      avatar: user.avatar,
+      role: user.role,
+      verified: user.verified,
+      isBanned: user.isBanned,
+      banReason: user.banReason,
+      bannedAt: user.bannedAt,
+      unbanReason: user.unbanReason,
+      unbannedAt: user.unbannedAt,
+      createdAt: user.createdAt,
+    }));
+  }
+
+  async updateUserRole(
+    userId: number,
+    role: UserRole,
+    actor: User,
+  ) {
+    const user = await this.findManageableUser(userId, actor);
+    user.role = role;
+    await this.userRepository.save(user);
+
+    return { message: `${user.displayName || user.username}'s role was updated.` };
+  }
+
+  async banUser(userId: number, reason: string, actor: User) {
+    const user = await this.findManageableUser(userId, actor);
+    user.isBanned = true;
+    user.banReason = reason.trim();
+    user.bannedAt = new Date();
+    user.bannedById = actor.id;
+    user.unbanReason = null;
+    user.unbannedAt = null;
+    user.unbannedById = null;
+    await this.userRepository.save(user);
+
+    return { message: `${user.displayName || user.username} was banned.` };
+  }
+
+  async unbanUser(userId: number, reason: string, actor: User) {
+    const user = await this.findManageableUser(userId, actor);
+    user.isBanned = false;
+    user.unbanReason = reason.trim();
+    user.unbannedAt = new Date();
+    user.unbannedById = actor.id;
+    await this.userRepository.save(user);
+
+    return { message: `${user.displayName || user.username} was unbanned.` };
+  }
+
+  private async findManageableUser(userId: number, actor: User) {
+    if (userId === actor.id) {
+      throw new ForbiddenException('You cannot change your own account.');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    if (user.role === UserRole.OWNER) {
+      throw new ForbiddenException('Owner accounts cannot be changed.');
+    }
+
+    return user;
   }
 
   async verifyCommunity(id: number) {

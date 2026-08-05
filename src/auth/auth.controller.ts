@@ -16,9 +16,11 @@ export class AuthController {
   @UseGuards(AuthGuard('discord'))
   async discordCallback(@Req() req: any, @Res() res: Response) {
     const result = await this.authService.login(req.user);
+    const frontendUrl =
+      process.env.FRONTEND_URL || 'http://localhost:5173/discover';
 
     res.redirect(
-      `http://localhost:5173/auth/callback?token=${result.token}`,
+      `${frontendUrl}/auth/callback?token=${encodeURIComponent(result.token)}`,
     );
   }
   @Get('me')

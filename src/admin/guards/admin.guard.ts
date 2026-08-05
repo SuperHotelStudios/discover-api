@@ -19,7 +19,10 @@ export class AdminGuard implements CanActivate {
       throw new ForbiddenException();
     }
 
-    if (user.role !== UserRole.ADMIN) {
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.role !== UserRole.OWNER
+    ) {
       throw new ForbiddenException(
         'Admin access only.',
       );

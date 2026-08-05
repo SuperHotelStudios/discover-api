@@ -14,6 +14,7 @@ import {
 import { ReportsService } from './reports.service';
 
 import { JwtAuthGuard } from '../auth/jwt-auth/jwt-auth.guard';
+import { AdminGuard } from '../admin/guards/admin.guard';
 
 import { CreateReportDto } from './dto/create-report.dto';
 import { ReviewReportDto } from './dto/review-report.dto';
@@ -52,7 +53,7 @@ export class ReportsController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Get()
   findAll(
     @Query('status')
@@ -63,7 +64,7 @@ export class ReportsController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(':id/resolve')
   resolve(
     @Param('id', ParseIntPipe)
@@ -82,7 +83,7 @@ export class ReportsController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(':id/reject')
   reject(
     @Param('id', ParseIntPipe)

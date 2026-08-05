@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 
@@ -11,6 +11,12 @@ export class AuthService {
 
   async login(profile: any) {
     let user = await this.usersService.findByDiscordId(profile.id);
+
+    if (user?.isBanned) {
+      throw new ForbiddenException(
+        'Your Discover account has been banned.',
+      );
+    }
 
     if (!user) {
       user = await this.usersService.createDiscordUser(profile);

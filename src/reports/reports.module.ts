@@ -7,6 +7,7 @@ import { ReportsService } from './reports.service';
 import { Report } from './entities/report.entity';
 import { User } from '../users/entities/user.entity';
 import { Community } from '../communities/entities/community.entity';
+import { AdminGuard } from '../admin/guards/admin.guard';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { Community } from '../communities/entities/community.entity';
     ]),
   ],
   controllers: [ReportsController],
-  providers: [ReportsService],
+  providers: [ReportsService, AdminGuard],
   exports: [ReportsService],
 })
 export class ReportsModule {}

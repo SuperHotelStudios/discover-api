@@ -6,6 +6,7 @@ import { CategoryRequest } from './entities/category-request.entity';
 import { CategoryRequestsController } from './category-requests.controller';
 import { CategoryRequestsService } from './category-requests.service';
 import { Category } from '../categories/entities/category.entity';
+import { AdminGuard } from '../admin/guards/admin.guard';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { Category } from '../categories/entities/category.entity';
   ],
   providers: [
     CategoryRequestsService,
+    AdminGuard,
   ],
   exports: [
     CategoryRequestsService,

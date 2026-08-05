@@ -184,6 +184,12 @@ const latestReport =
     );
   }
 
+  if (report.status !== ReportStatus.PENDING) {
+    throw new ConflictException(
+      'This report has already been reviewed.',
+    );
+  }
+
   report.status = ReportStatus.RESOLVED;
   report.reviewedBy = admin;
   report.reviewedAt = new Date();
@@ -211,6 +217,12 @@ async reject(
   if (!report) {
     throw new NotFoundException(
       'Report not found.',
+    );
+  }
+
+  if (report.status !== ReportStatus.PENDING) {
+    throw new ConflictException(
+      'This report has already been reviewed.',
     );
   }
 

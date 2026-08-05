@@ -103,7 +103,10 @@ export class CommunitiesService {
       community,
     );
 
-    return community;
+    return {
+      message: 'Community updated successfully.',
+      community,
+    };
   }
 
   async deleteMyCommunity(
