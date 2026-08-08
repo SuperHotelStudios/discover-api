@@ -18,6 +18,7 @@ import { AdminModule } from './admin/admin.module';
 import { CategoryRequestsModule } from './category-requests/category-requests.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
+import { SeedService } from './database/seeds/seed.service';
 
 @Module({
   imports: [
@@ -68,6 +69,9 @@ import { ReportsModule } from './reports/reports.module';
 
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService,
+      SeedService,
+  ]
+  
 })
 export class AppModule {}

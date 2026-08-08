@@ -21,6 +21,7 @@ import { AdminGuard } from '../admin/guards/admin.guard';
   ],
   exports: [
     CategoriesService,
+    TypeOrmModule,
   ],
 })
 export class CategoriesModule {}

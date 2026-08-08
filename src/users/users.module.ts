@@ -24,6 +24,8 @@ import { Favorite } from '../favorites/entities/favorite.entity';
   ],
   controllers: [UsersController],
   providers: [UsersService],
-  exports: [UsersService],
+  exports: [UsersService,
+      TypeOrmModule,
+  ],
 })
 export class UsersModule {}
