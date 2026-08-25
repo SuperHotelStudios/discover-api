@@ -3,6 +3,7 @@ import {
   Get,
   Req,
   UseGuards,
+  Param,
 } from '@nestjs/common';
 
 import { UsersService } from './users.service';
@@ -27,5 +28,14 @@ export class UsersController {
     return this.usersService.getProfile(
       req.user,
     );
+  }
+
+  /**
+   * Public endpoint for bot to check if Discord user is registered
+   * Used by the Discord bot's /verify command
+   */
+  @Get('verify/:discordId')
+  async verifyDiscordUser(@Param('discordId') discordId: string) {
+    return this.usersService.findByDiscordId(discordId);
   }
 }

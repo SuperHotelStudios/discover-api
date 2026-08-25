@@ -10,6 +10,7 @@ import { Review } from '../reviews/entities/review.entity';
 import { CommunityView } from '../views/entities/community-view.entity';
 import { InviteClick } from '../clicks/entities/invite-click.entity';
 import { Favorite } from '../favorites/entities/favorite.entity';
+import { Advertisement } from '../advertisements/entities/advertisement.entity';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { Favorite } from '../favorites/entities/favorite.entity';
       CommunityView,
       InviteClick,
       Favorite,
+      Advertisement,
     ]),
   ],
   controllers: [UsersController],

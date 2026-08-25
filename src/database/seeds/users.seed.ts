@@ -4,7 +4,7 @@ export const defaultUsers = [
     role: 'OWNER',
   },
   {
-    discordId: '1353177690395643905',
+    discordId: '1353177690395643905 ',
     role: 'ADMIN',
   },
 ];

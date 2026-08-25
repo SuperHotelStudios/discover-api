@@ -4,17 +4,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 
 import { User, UserRole } from '../users/entities/user.entity';
 import { Community } from '../communities/entities/community.entity';
-import { Advertisement } from '../advertisements/entities/advertisement.entity';
+import {
+  Advertisement,
+  AdvertisementStatus,
+} from '../advertisements/entities/advertisement.entity';
 import { Category } from '../categories/entities/category.entity';
 import { Review } from '../reviews/entities/review.entity';
 import { Favorite } from '../favorites/entities/favorite.entity';
 import { CommunityView } from '../views/entities/community-view.entity';
 import { InviteClick } from '../clicks/entities/invite-click.entity';
 import { Report } from '../reports/entities/report.entity';
+import { AdvertisementEvent } from '../advertisements/entities/advertisement-event.entity';
+import { AdvertisementEventDelivery } from '../advertisements/entities/advertisement-event-delivery.entity';
 
 @Injectable()
 export class AdminService {
@@ -45,6 +50,12 @@ export class AdminService {
 
     @InjectRepository(Report)
     private readonly reportRepository: Repository<Report>,
+
+    @InjectRepository(AdvertisementEvent)
+    private readonly advertisementEventRepository: Repository<AdvertisementEvent>,
+
+    @InjectRepository(AdvertisementEventDelivery)
+    private readonly advertisementEventDeliveryRepository: Repository<AdvertisementEventDelivery>,
     
   ) {}
 
@@ -87,6 +98,31 @@ export class AdminService {
     const clicks =
       await this.clickRepository.count();
 
+    const partnerLeftEvents = await this.advertisementEventRepository.find({
+      where: { type: 'PARTNER_LEFT_DISCOVER' },
+      order: { occurredAt: 'DESC' },
+      take: 20,
+    });
+    const eventIds = partnerLeftEvents.map((event) => event.id);
+    const deliveries = eventIds.length
+      ? await this.advertisementEventDeliveryRepository.find({
+          where: eventIds.map((eventId) => ({ eventId })),
+          order: { attemptedAt: 'DESC' },
+        })
+      : [];
+    const deliveriesByEvent = new Map<number, AdvertisementEventDelivery[]>();
+
+    for (const delivery of deliveries) {
+      const eventDeliveries = deliveriesByEvent.get(delivery.eventId) || [];
+      eventDeliveries.push(delivery);
+      deliveriesByEvent.set(delivery.eventId, eventDeliveries);
+    }
+
+    const partnerLeftEventsWithDeliveries = partnerLeftEvents.map((event) => ({
+      ...event,
+      deliveries: deliveriesByEvent.get(event.id) || [],
+    }));
+
     return {
       statistics: {
         users,
@@ -99,17 +135,31 @@ export class AdminService {
         favorites,
         views,
         clicks,
+        partnerLeftEvents: partnerLeftEventsWithDeliveries,
       },
     };
   }
 
   async getCommunities() {
-  return this.communityRepository.find({
-    relations: ['createdBy'],
-    order: {
-      createdAt: 'DESC',
-    },
-  });
+    const activeAdvertisements = await this.advertisementRepository.find({
+      where: { status: AdvertisementStatus.ACTIVE },
+      relations: ['community'],
+    });
+    const activeCommunityIds = activeAdvertisements.map(
+      (advertisement) => advertisement.community.id,
+    );
+
+    if (!activeCommunityIds.length) {
+      return [];
+    }
+
+    return this.communityRepository.find({
+      where: { id: In(activeCommunityIds) },
+      relations: ['createdBy'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
   }
 
   async getUsers(search = '') {

@@ -10,6 +10,10 @@ import { Review } from '../reviews/entities/review.entity';
 import { CommunityView } from '../views/entities/community-view.entity';
 import { InviteClick } from '../clicks/entities/invite-click.entity';
 import { Favorite } from '../favorites/entities/favorite.entity';
+import {
+  Advertisement,
+  AdvertisementStatus,
+} from '../advertisements/entities/advertisement.entity';
 
 @Injectable()
 export class UsersService {
@@ -31,6 +35,9 @@ export class UsersService {
 
     @InjectRepository(Favorite)
     private readonly favoriteRepository: Repository<Favorite>,
+
+    @InjectRepository(Advertisement)
+    private readonly advertisementRepository: Repository<Advertisement>,
   ){};
 
   findAll() {
@@ -84,14 +91,27 @@ export class UsersService {
       throw new NotFoundException('User not found.');
     }
 
-    const communities =
-      await this.communityRepository.count({
-        where: {
-          createdBy: {
-            id: user.id,
-          },
+    const ownedCommunities = await this.communityRepository.find({
+      where: {
+        createdBy: {
+          id: user.id,
         },
-      });
+      },
+    });
+    const activeAdvertisements = await this.advertisementRepository.find({
+      where: {
+        status: AdvertisementStatus.ACTIVE,
+        advertiser: { id: user.id },
+      },
+      relations: ['community'],
+    });
+    const activeCommunityIds = new Set(
+      activeAdvertisements.map((advertisement) => advertisement.community.id),
+    );
+    const advertisedCommunities = ownedCommunities.filter((community) =>
+      activeCommunityIds.has(community.id),
+    );
+    const communities = advertisedCommunities.length;
 
     const reviews =
       await this.reviewRepository.count({
@@ -102,17 +122,8 @@ export class UsersService {
         },
       });
 
-    const ownedCommunities =
-      await this.communityRepository.find({
-        where: {
-          createdBy: {
-            id: user.id,
-          },
-        },
-      });
-
     const totalPoints =
-      ownedCommunities.reduce(
+      advertisedCommunities.reduce(
         (sum, community) =>
           sum + community.totalPoints,
         0,
@@ -125,7 +136,7 @@ export class UsersService {
 
       let bestCommunity: any = null;
 
-      for (const community of ownedCommunities) {
+      for (const community of advertisedCommunities) {
         const views =
           await this.viewRepository.count({
             where: {
@@ -176,7 +187,7 @@ export class UsersService {
       }
 
       const averageRating =
-      ownedCommunities.length > 0
+      advertisedCommunities.length > 0
         ? totalRating /
           ownedCommunities.length
         : 0;
@@ -203,7 +214,7 @@ export class UsersService {
 
       bestCommunity,
 
-      communities: ownedCommunities,
+      communities: advertisedCommunities,
     };
   }
 }

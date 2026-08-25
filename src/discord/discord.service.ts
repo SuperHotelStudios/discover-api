@@ -9,6 +9,38 @@ export class DiscordService {
     private readonly httpService: HttpService,
   ) {}
 
+  async isUserInGuild(discordId: string): Promise<boolean> {
+    const guildId = process.env.GUILD_ID || process.env.MAIN_DISCORD_GUILD_ID;
+    const token = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
+
+    if (!guildId || !token) {
+      return false;
+    }
+
+    try {
+      await firstValueFrom(
+        this.httpService.get(
+          `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}`,
+          {
+            headers: {
+              Authorization: `Bot ${token}`,
+            },
+          },
+        ),
+      );
+
+      return true;
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return false;
+      }
+
+      throw new BadRequestException(
+        'Unable to verify whether you are in the Discover Discord server right now.',
+      );
+    }
+  }
+
   async getInviteInfo(inviteLink: string) {
     const match = inviteLink.match(
       /(?:discord\.gg\/|discord\.com\/invite\/)([A-Za-z0-9-]+)/,

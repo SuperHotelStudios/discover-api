@@ -4,9 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 
 import { Advertisement, AdvertisementStatus } from './entities/advertisement.entity';
+import { AdvertisementEvent } from './entities/advertisement-event.entity';
+import { AdvertisementEventDelivery } from './entities/advertisement-event-delivery.entity';
 import { Community } from '../communities/entities/community.entity';
 import { User } from '../users/entities/user.entity';
 import { DiscordService } from '../discord/discord.service';
@@ -18,6 +20,12 @@ export class AdvertisementsService {
     @InjectRepository(Advertisement)
     private readonly advertisementRepository: Repository<Advertisement>,
 
+    @InjectRepository(AdvertisementEvent)
+    private readonly advertisementEventRepository: Repository<AdvertisementEvent>,
+
+    @InjectRepository(AdvertisementEventDelivery)
+    private readonly advertisementEventDeliveryRepository: Repository<AdvertisementEventDelivery>,
+
     @InjectRepository(Community)
     private readonly communityRepository: Repository<Community>,
 
@@ -26,6 +34,125 @@ export class AdvertisementsService {
 
     private readonly discordService: DiscordService,
   ) {}
+
+  async findActiveAdvertisements() {
+    return this.advertisementRepository.find({
+      where: {
+        status: AdvertisementStatus.ACTIVE,
+      },
+      relations: ['advertiser', 'community'],
+    });
+  }
+
+  async purgeExpiredRemovedAdvertisements() {
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    const cutoff = new Date(Date.now() - THIRTY_DAYS);
+
+    const expiredAdvertisements = await this.advertisementRepository.find({
+      where: {
+        status: Not(AdvertisementStatus.ACTIVE),
+      },
+      relations: ['advertiser', 'community'],
+    });
+
+    const toDelete = expiredAdvertisements.filter((ad) => {
+      if (!ad.removedAt) {
+        return false;
+      }
+      return ad.removedAt.getTime() < cutoff.getTime();
+    });
+
+    if (!toDelete.length) {
+      return { deleted: 0, message: 'No expired removed advertisements found.' };
+    }
+
+    await this.advertisementRepository.remove(toDelete);
+
+    return {
+      deleted: toDelete.length,
+      message: 'Expired removed advertisements were deleted successfully.',
+    };
+  }
+
+  async removeForLeftServer(discordId: string) {
+    const advertisements = await this.advertisementRepository.find({
+      where: {
+        status: AdvertisementStatus.ACTIVE,
+        advertiser: {
+          discordId,
+        },
+      },
+      relations: ['advertiser', 'community'],
+    });
+
+    if (!advertisements.length) {
+      return { removed: 0, message: 'No active advertisements to remove.' };
+    }
+
+    const now = new Date();
+    const eventIds = new Map<number, number>();
+
+    for (const advertisement of advertisements) {
+      advertisement.status = AdvertisementStatus.REMOVED_LEFT_DISCOVER;
+      advertisement.removedAt = now;
+      advertisement.removeReason = 'User left the main Discover Discord server.';
+      await this.advertisementRepository.save(advertisement);
+
+      advertisement.community.totalPoints = Math.max(
+        0,
+        advertisement.community.totalPoints - advertisement.pointsAwarded,
+      );
+      await this.communityRepository.save(advertisement.community);
+
+      const event = await this.advertisementEventRepository.save(
+        this.advertisementEventRepository.create({
+          type: 'PARTNER_LEFT_DISCOVER',
+          advertisementId: advertisement.id,
+          discordId: advertisement.advertiser.discordId,
+          username: advertisement.advertiser.username,
+          serverName: advertisement.community.name,
+          banner: advertisement.community.banner || null,
+          pointsRolledBack: advertisement.pointsAwarded,
+          reason: advertisement.removeReason,
+          occurredAt: now,
+        }),
+      );
+      eventIds.set(advertisement.id, event?.id);
+    }
+
+    return {
+      removed: advertisements.length,
+      message: 'Active advertisements removed for users who left the main server.',
+      advertisements: advertisements.map((advertisement) => ({
+        serverName: advertisement.community.name,
+        eventId: eventIds.get(advertisement.id),
+        banner: advertisement.community.banner,
+        username: advertisement.advertiser.username,
+        discordId: advertisement.advertiser.discordId,
+        removedAt: advertisement.removedAt,
+        removeReason: advertisement.removeReason,
+      })),
+    };
+  }
+
+  async recordEventDelivery(
+    eventId: number,
+    delivery: {
+      adminDiscordId: string;
+      adminUsername: string;
+      status: 'SENT' | 'FAILED';
+      errorMessage?: string | null;
+    },
+  ) {
+    return this.advertisementEventDeliveryRepository.save(
+      this.advertisementEventDeliveryRepository.create({
+        eventId,
+        ...delivery,
+        errorMessage: delivery.errorMessage || null,
+        attemptedAt: new Date(),
+      }),
+    );
+  }
 
   async create(
     createAdvertisementDto: CreateAdvertisementDto,
@@ -46,7 +173,19 @@ export class AdvertisementsService {
     }
 
     // ============================
-    // STEP 2 : Cooldown Check
+    // STEP 2 : Server Check
+    // ============================
+
+    const isInServer = await this.discordService.isUserInGuild(dbUser.discordId);
+
+    if (!isInServer) {
+      throw new BadRequestException(
+        'You must be in the main Discover Discord server to advertise.',
+      );
+    }
+
+    // ============================
+    // STEP 3 : Cooldown Check
     // ============================
 
     const SIX_HOURS = 6 * 60 * 60 * 1000;

@@ -5,10 +5,13 @@ import {
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { Community } from './entities/community.entity';
-import { Advertisement } from '../advertisements/entities/advertisement.entity';
+import {
+  Advertisement,
+  AdvertisementStatus,
+} from '../advertisements/entities/advertisement.entity';
 import { Review } from '../reviews/entities/review.entity';
 
 import { CreateCommunityDto } from './dto/create-community.dto';
@@ -52,16 +55,40 @@ export class CommunitiesService {
     return this.communityRepository.save(community);
   }
 
-  findAll() {
+  async findAll() {
+    const activeAdvertisements = await this.advertisementRepository.find({
+      where: { status: AdvertisementStatus.ACTIVE },
+      relations: ['community'],
+    });
+    const activeCommunityIds = activeAdvertisements.map(
+      (advertisement) => advertisement.community.id,
+    );
+
+    if (!activeCommunityIds.length) {
+      return [];
+    }
+
     return this.communityRepository.find({
       where: {
         hidden: false,
+        id: In(activeCommunityIds),
       },
       relations: ['createdBy'],
     });
   }
 
-  findOne(id: number) {
+  async findOne(id: number) {
+    const activeAdvertisement = await this.advertisementRepository.findOne({
+      where: {
+        status: AdvertisementStatus.ACTIVE,
+        community: { id },
+      },
+    });
+
+    if (!activeAdvertisement) {
+      return null;
+    }
+
     return this.communityRepository.findOne({
       where: {
         id,
@@ -174,9 +201,22 @@ export class CommunitiesService {
   }
 
   async getLeaderboard() {
+    const activeAdvertisements = await this.advertisementRepository.find({
+      where: { status: AdvertisementStatus.ACTIVE },
+      relations: ['community'],
+    });
+    const activeCommunityIds = activeAdvertisements.map(
+      (advertisement) => advertisement.community.id,
+    );
+
+    if (!activeCommunityIds.length) {
+      return [];
+    }
+
     const communities = await this.communityRepository.find({
       where: {
         hidden: false,
+        id: In(activeCommunityIds),
       },
       relations: ['createdBy'],
       order: {
