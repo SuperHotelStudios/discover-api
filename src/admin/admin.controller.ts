@@ -16,6 +16,7 @@ import { DeleteCommunityDto } from './dto/delete-community.dto';
 import {
   Body,
   Delete,
+  Post,
 } from '@nestjs/common';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { BanUserDto } from './dto/ban-user.dto';
@@ -35,6 +36,52 @@ export class AdminController {
   dashboard() {
     return this.adminService.getDashboard();
   }
+
+  @Post('transcripts')
+  createTranscript(@Body() body: any) {
+    return this.adminService.createTranscript({
+      ticketType: body.ticketType,
+      ticketName: body.ticketName,
+      ownerDiscordId: body.ownerDiscordId,
+      ownerUsername: body.ownerUsername,
+      closedBy: body.closedBy,
+      guildId: body.guildId,
+      channelId: body.channelId,
+      transcriptText: body.transcriptText,
+    });
+  }
+
+  @Get('transcripts')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  getTranscripts(@Query() query: { type?: string; user?: string; staff?: string; from?: string; to?: string; page?: string; limit?: string }) {
+    return this.adminService.getTranscripts({
+      ...query,
+      page: Number(query.page) || 1,
+      limit: Number(query.limit) || 10,
+    });
+  }
+
+  @Post('audit-logs')
+  createAuditLog(@Body() body: any) {
+    return this.adminService.createAuditLog(body);
+  }
+
+  @Get('audit-logs')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  getAuditLogs(@Query() query: { action?: string; executor?: string; target?: string; from?: string; to?: string; page?: string; limit?: string }) {
+    return this.adminService.getAuditLogs({
+      ...query,
+      page: Number(query.page) || 1,
+      limit: Number(query.limit) || 10,
+    });
+  }
+
+  @Post('ratings')
+  async createRating(@Body() body: { channelId: string; userDiscordId: string; score: number }) {
+    const existing = await this.adminService.getRating(body.channelId, body.userDiscordId);
+    return this.adminService.saveRating(existing || body);
+  }
+
   @Get('communities')
   @UseGuards(
     JwtAuthGuard,

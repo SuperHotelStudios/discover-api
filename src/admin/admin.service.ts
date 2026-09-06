@@ -20,6 +20,9 @@ import { InviteClick } from '../clicks/entities/invite-click.entity';
 import { Report } from '../reports/entities/report.entity';
 import { AdvertisementEvent } from '../advertisements/entities/advertisement-event.entity';
 import { AdvertisementEventDelivery } from '../advertisements/entities/advertisement-event-delivery.entity';
+import { TicketTranscript } from '../transcripts/entities/transcript.entity';
+import { AuditLog } from '../audit/entities/audit-log.entity';
+import { TicketRating } from '../ratings/entities/rating.entity';
 
 @Injectable()
 export class AdminService {
@@ -56,12 +59,22 @@ export class AdminService {
 
     @InjectRepository(AdvertisementEventDelivery)
     private readonly advertisementEventDeliveryRepository: Repository<AdvertisementEventDelivery>,
-    
+
+    @InjectRepository(TicketTranscript)
+    private readonly transcriptRepository: Repository<TicketTranscript>,
+
+    @InjectRepository(AuditLog)
+    private readonly auditLogRepository: Repository<AuditLog>,
+
+    @InjectRepository(TicketRating)
+    private readonly ratingRepository: Repository<TicketRating>,
   ) {}
 
   async getDashboard() {
     const users =
       await this.userRepository.count();
+
+    const transcripts = await this.transcriptRepository.count();
 
     const communities =
       await this.communityRepository.count();
@@ -135,9 +148,85 @@ export class AdminService {
         favorites,
         views,
         clicks,
+        transcripts,
         partnerLeftEvents: partnerLeftEventsWithDeliveries,
       },
     };
+  }
+
+  async createTranscript(data: {
+    ticketType: string;
+    ticketName: string;
+    ownerDiscordId: string;
+    ownerUsername: string;
+    closedBy?: string | null;
+    guildId?: string | null;
+    channelId: string;
+    transcriptText: string;
+  }) {
+    const existingTranscript = await this.transcriptRepository.findOne({
+      where: { channelId: data.channelId },
+    });
+    const transcript = existingTranscript || this.transcriptRepository.create();
+
+    Object.assign(transcript, {
+      ticketType: data.ticketType,
+      ticketName: data.ticketName,
+      ownerDiscordId: data.ownerDiscordId,
+      ownerUsername: data.ownerUsername,
+      closedBy: data.closedBy || null,
+      guildId: data.guildId || null,
+      channelId: data.channelId,
+      transcriptText: data.transcriptText,
+    });
+
+    const saved = await this.transcriptRepository.save(transcript);
+    return {
+      id: saved.id,
+      ticketType: saved.ticketType,
+      ticketName: saved.ticketName,
+      ownerUsername: saved.ownerUsername,
+      createdAt: saved.createdAt,
+    };
+  }
+
+  async getTranscripts(filters: { type?: string; user?: string; staff?: string; from?: string; to?: string; page?: number; limit?: number } = {}) {
+    const query = this.transcriptRepository.createQueryBuilder('transcript').orderBy('transcript.createdAt', 'DESC');
+    if (filters.type) query.andWhere('transcript.ticketType = :type', { type: filters.type });
+    if (filters.user) query.andWhere('(transcript.ownerUsername LIKE :user OR transcript.ownerDiscordId LIKE :user)', { user: `%${filters.user}%` });
+    if (filters.staff) query.andWhere('transcript.closedBy LIKE :staff', { staff: `%${filters.staff}%` });
+    if (filters.from) query.andWhere('transcript.createdAt >= :from', { from: filters.from });
+    if (filters.to) query.andWhere('transcript.createdAt <= :to', { to: `${filters.to} 23:59:59` });
+    const page = Math.max(1, Number(filters.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(filters.limit) || 10));
+    const [items, total] = await query.skip((page - 1) * limit).take(limit).getManyAndCount();
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async createAuditLog(data: Partial<AuditLog>) {
+    return this.auditLogRepository.save(this.auditLogRepository.create(data));
+  }
+
+  async getAuditLogs(filters: { action?: string; executor?: string; target?: string; from?: string; to?: string; page?: number; limit?: number } = {}) {
+    const query = this.auditLogRepository.createQueryBuilder('audit').orderBy('audit.createdAt', 'DESC');
+    if (filters.action) query.andWhere('audit.action = :action', { action: filters.action });
+    if (filters.executor) query.andWhere('(audit.executorName LIKE :executor OR audit.executorId LIKE :executor)', { executor: `%${filters.executor}%` });
+    if (filters.target) query.andWhere('(audit.targetName LIKE :target OR audit.targetId LIKE :target)', { target: `%${filters.target}%` });
+    if (filters.from) query.andWhere('audit.createdAt >= :from', { from: filters.from });
+    if (filters.to) query.andWhere('audit.createdAt <= :to', { to: `${filters.to} 23:59:59` });
+    const page = Math.max(1, Number(filters.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(filters.limit) || 10));
+    const [items, total] = await query.skip((page - 1) * limit).take(limit).getManyAndCount();
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getRating(channelId: string, userDiscordId: string) {
+    return this.ratingRepository.findOne({ where: { channelId, userDiscordId } });
+  }
+
+  async saveRating(data: Partial<TicketRating>) {
+    const rating = this.ratingRepository.create(data);
+    return this.ratingRepository.save(rating);
   }
 
   async getCommunities() {

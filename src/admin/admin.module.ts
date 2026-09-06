@@ -18,6 +18,9 @@ import { Favorite } from '../favorites/entities/favorite.entity';
 import { CommunityView } from '../views/entities/community-view.entity';
 import { InviteClick } from '../clicks/entities/invite-click.entity';
 import { Report } from '../reports/entities/report.entity';
+import { TicketTranscript } from '../transcripts/entities/transcript.entity';
+import { AuditLog } from '../audit/entities/audit-log.entity';
+import { TicketRating } from '../ratings/entities/rating.entity';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { Report } from '../reports/entities/report.entity';
     CommunityView,
     InviteClick,
     Report,
+    TicketTranscript,
+    AuditLog,
+    TicketRating,
   ]),
   ],
   controllers: [AdminController],
